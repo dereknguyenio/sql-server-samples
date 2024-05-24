@@ -3,7 +3,6 @@
 
 #https://learn.microsoft.com/en-us/sql/sql-server/end-of-support/sql-server-extended-security-updates?view=sql-server-ver16&tabs=cli#subscribe-instances-for-esus
 
-
 # Explanation:
 # - Login with Managed Identity: The script uses the managed identity to log in to Azure.
 # - Set Subscription: Sets the Azure subscription to the specified subscription ID.
@@ -38,20 +37,15 @@
 # Click Create a runbook.
 # Enter a name, select PowerShell as the runbook type, and create the runbook.
 
-
-# Variables
-#$SubscriptionId = "0e7c68e3-ddc7-4979-bdc2-30a14addf264"        # Replace with your Azure subscription ID
-#$ResourceGroup = "azurearcsqlvmdev_group"          # Replace with your Azure resource group
-#$AzureRegion = "eastus"              # Replace with your Azure region
 Param(
     [Parameter(Mandatory=$true)]
-    [string]$SubscriptionId = "0e7c68e3-ddc7-4979-bdc2-30a14addf264",
+    [string]$SubscriptionId = "<Arc Subscription ID>",
 
     [Parameter(Mandatory=$true)]
-    [string]$ResourceGroup = "azurearcsqlvmdev_group",
+    [string]$ResourceGroup = "<Arc Resource Group>",
 
     [Parameter(Mandatory=$true)]
-    [string]$Location = "eastus",
+    [string]$Location = "<Arc Region ie eastus>",
 
     [Parameter(Mandatory=$true)]
     [string]$MachineName,
