@@ -1,0 +1,21 @@
+Here are the step-by-step troubleshooting steps for the Chevron Arc Working Session to remediate / reinstall the SQL extension, as discussed in the meeting:
+Check the services window on the machine and verify that the Microsoft SQL Server extension service is not installed or running.
+Download the installation script from the portal by connecting the SQL Server to Azure Arc and entering the server details.
+Run the installation script on the machine using PowerShell ISE as admin and authenticate with the device login code.
+If the script fails with an authentication error, try to activate the PIM role of limited contributor for the resource group and rerun the script.
+If the script still fails, go to the portal and try to delete the SQL Server extension from the extensions tab of the machine.
+If the delete button is greyed out, SQL Server Extension is stuck in non-deterministic state.
+Arc could not start the service because the SQL Server Extension is in stopped/hung state. Arc cannot understand the state of the SQL Server Extension
+Navigate to Admin Powershell prompt
+Navigate to C:\Packages\Plugins\Microsoft.AzureData.WindowsAgent.SqlServer\<version of the extension>\
+Run the SQL Server extension deployer.exe disable and uninstall commands on the machine to clean up the extension files.
+Run SqlServerExtensionDeployer.exe disable
+Run SqlServerExtensionDeployer.exe uninstall
+Check the deployer.log under ProgramData\Guestconfig\extension_logs\Microsoft.AzureData.WindowsAgent.SqlServer\1.1.XXX\deployer.log
+Navigate to %localappdata% and check if Microsoft SQL Server Extension Agent is missing. It should be missing.
+Navigate to Azure Portal and open CloudShell
+Run az account set --subscription <subscription id>
+Run az connectedmachine extension delete -–machine-name gswcpsqlvplv116 -–name WindowsAgent.SqlServer --resource-group BU_Group2-P00701-20210826 --yes -y
+Try to add the SQL Server extension again from the Arc Machine portal and check the operation details for the status.
+If the extension is installed successfully, check the deployer log and the service log on the machine for any errors.
+Collect Logs by navigating to Terminal and running azcmagent logs -f -o c:\temp\azlogs.zip
