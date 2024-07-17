@@ -62,7 +62,7 @@ headers = {
 
 payload = {
     "subscriptions": [
-        "0e7c68e3-ddc7-4979-bdc2-30a14addf264"
+        "<sub_id>"
     ],
     "query": "resources | where type =~ 'microsoft.azurearcdata/sqlserverinstances' | extend ARCMachineName = tostring(properties['containerResourceId']) | project name, type, subscriptionId, ARCMachineName, properties"
 }
