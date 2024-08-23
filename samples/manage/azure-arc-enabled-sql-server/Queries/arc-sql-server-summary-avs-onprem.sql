@@ -1,4 +1,6 @@
-UPDATED KUSTO QUERY - Arc SQL Server Summary - Includes AVS + Onpremise
+//UPDATED KUSTO QUERY - Arc SQL Server Summary - Includes AVS + Onpremise
+//The script is a Kusto query designed to summarize Azure Arc-enabled SQL Server instances, including Azure VMware Solution (AVS) and on-premise machines. It extends and joins various properties from resources to provide details such as subscription ID, resource group, machine ID, computer name, operating system, SQL server status, version, and license type, among others. The results are ordered by operating system name.
+
  
 Resources
 | where type == 'microsoft.hybridcompute/machines'
