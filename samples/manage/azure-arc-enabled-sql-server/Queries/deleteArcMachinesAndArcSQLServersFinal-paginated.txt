@@ -1,0 +1,131 @@
+# Script Title: Azure Arc Machine Deletion Script - Powershell
+# Description: This script is designed to delete Azure Arc-enabled machines along with their SQL Server instances.
+# It iterates over a list of machine names and deletes the machine and its associated SQL Server instance from Azure Arc.
+
+# Define the query to fetch Azure Arc machines and their associated SQL Server instances
+$query = @"
+resources
+| where type == "microsoft.azurearcdata/sqlserverinstances"
+| project name, 
+          ComputerName = tostring(split(properties['containerResourceId'], '/').[-1])
+"@
+
+# Function to execute the query with pagination
+function Get-AzGraphResultsWithPagination {
+    param (
+        [string]$query,
+        [int]$pageSize = 1000
+    )
+    
+    $skipToken = $null
+    $allResults = @()
+
+    do {
+        $pagedQuery = if ($skipToken) { "$query | take $pageSize | skip $skipToken" } else { "$query | take $pageSize" }
+        $results = Search-AzGraph -Query $pagedQuery
+        $allResults += $results
+        $skipToken = $results | Measure-Object | Select-Object -ExpandProperty Count
+    } while ($results.Count -eq $pageSize)
+
+    return $allResults
+}
+
+# Execute the query with pagination
+$results = Get-AzGraphResultsWithPagination -query $query
+
+# Initialize a hashtable to store Arc machines and their associated SQL instances
+$arcMachineSQLInstanceMap = @{}
+
+# Iterate over the results and populate the hashtable
+foreach ($result in $results) {
+    $machineName = $result.name
+    $computerName = $result.ComputerName
+
+    # Check if the machine name already exists in the hashtable
+    if ($arcMachineSQLInstanceMap.ContainsKey($machineName)) {
+        # Add the SQL instance to the existing machine entry
+        $arcMachineSQLInstanceMap[$machineName] += $computerName
+    } else {
+        # Create a new entry for the machine with its associated SQL instance
+        $arcMachineSQLInstanceMap[$machineName] = @($computerName)
+    }
+}
+
+# Print out the Arc machines and their associated SQL instances
+foreach ($machineName in $arcMachineSQLInstanceMap.Keys) {
+    Write-Host "Azure Arc Machine: $machineName"
+    Write-Host "Associated SQL Server Instances:"
+    foreach ($sqlInstance in $arcMachineSQLInstanceMap[$machineName]) {
+        Write-Host "  - $sqlInstance"
+    }
+    Write-Host ""
+}
+
+# Define the resource group name where the Azure Arc machines are located
+$resourceGroup = "azurearcsqlvmdev_group"
+
+# List of Azure Arc machine names to delete
+$specificMachines = @(
+    ""
+    # Add more Arc machine names here
+)
+
+Write-Host "Specific Machines marked for deletion: $specificMachines"
+
+# Loop through each specified machine name
+foreach ($machineName in $specificMachines) {
+    Write-Host "--------------------------------------------------------------------------"
+    Write-Host "Processing Azure Arc machine: $machineName"
+
+    # Find the matching Azure Arc machine in the results
+    $arcMachine = $arcMachineSQLInstanceMap[$machineName]
+    if ($arcMachine) {
+        # Fetch the containerResourceId for the Azure Arc machine
+        $containerResourceId = $arcMachine
+
+        # Fetch SQL Server instances associated with the current Azure Arc machine
+        $sqlInstances = $results | Where-Object { $_.ComputerName -eq $machineName }
+
+        # Check if there are SQL instances associated with the Arc machine
+        if ($sqlInstances) {
+            # Output debugging information
+            Write-Host "Container Resource ID: $containerResourceId"
+            Write-Host "Found $($sqlInstances.Count) SQL Server instances associated with Azure Arc machine: $machineName"
+
+            # Loop through each matching SQL Server instance
+            foreach ($sqlInstance in $sqlInstances) {
+                $instanceName = $sqlInstance.Name
+                Write-Host "Deleting Azure Arc SQL Server instance: $instanceName..."
+
+                # Try to delete the SQL Server instance
+                try {
+                    Remove-AzResource -ResourceGroupName "${resourceGroup}" -ResourceType "Microsoft.AzureArcData/SqlServerInstances" -Name "$instanceName" -Force -Verbose
+                    Write-Host "Azure Arc SQL Server instance $instanceName deleted successfully."
+                }
+                catch {
+                    Write-Host "Error deleting SQL Server instance $instanceName"
+                }
+            }
+        }
+        else {
+            Write-Host "No SQL Server instances found associated with Azure Arc machine: $machineName"
+        }
+
+        # After attempting to delete all associated SQL instances, delete the Arc machine
+        Write-Host "Deleting Azure Arc machine: $machineName..."
+        try {
+            Remove-AzConnectedMachine -Name $machineName -ResourceGroupName $resourceGroup -Force -Verbose
+            Write-Host "Azure Arc machine $machineName deleted successfully."
+        }
+        catch {
+            Write-Host "Error deleting Arc machine $machineName"
+        }
+
+        Write-Host "$machineName and associated resources deleted."
+    }
+    else {
+        Write-Host "No Azure Arc machine found with name: $machineName"
+    }
+}
+
+Write-Host "All specified machines and their related SQL Server instances have been processed."
