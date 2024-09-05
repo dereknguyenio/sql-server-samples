@@ -1,0 +1,31 @@
+# Script Title: Azure Arc SQL Instance Deletion Script - PowerShell
+# Description: This script deletes Azure Arc-enabled SQL Server Instances and optionally their machines by importing data from a CSV file.
+
+# Path to the CSV file
+$csvPath = "C:\Path\To\Your\File.csv"
+
+# Import the CSV file into a variable
+$instances = Import-Csv -Path $csvPath
+
+# Run deletions in parallel
+$instances | ForEach-Object -Parallel {
+    try {
+        Write-Host "Deleting Azure Arc SQL Server instance for $($_.ArcSQLInstance) in resource group $($_.resourceGroup)..."
+        Remove-AzResource -ResourceGroupName $_.resourceGroup -ResourceType "Microsoft.AzureArcData/SqlServerInstances" -Name $_.ArcSQLInstance -Force -Verbose
+
+        # Uncomment the following lines if you also need to delete the Arc machine itself
+        # Write-Host "Deleting Arc machine $($_.ArcSQLInstance) in resource group $($_.resourceGroup)..."
+        # Remove-AzConnectedMachine -Name $_.ArcSQLInstance -ResourceGroupName $_.resourceGroup
+
+        Write-Host "$($_.ArcSQLInstance) resources deleted in $($_.resourceGroup)."
+    }
+    catch {
+        Write-Host "Error deleting SQL Server instance for $($_.ArcSQLInstance) in $($_.resourceGroup): $_"
+    }
+} -ThrottleLimit 10   # Adjust the throttle limit for concurrent tasks
+
+
+Write-Host "All specified Arc SQL Server machines and their related resources across multiple resource groups have been deleted from the CSV file input."
+
+
+
